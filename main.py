@@ -4,7 +4,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-DESKTOP_PATH = os.path.expanduser("~/Desktop")
+
+# DESKTOP_PATH = os.path.expanduser("~/Desktop")
 
 def ler_arquivo(nome_arquivo):
     with open(nome_arquivo, 'rb') as arquivo:
@@ -26,50 +27,86 @@ def derivar_chave(senha, salt=b'saltomaluco@maisde8000'):
 
 def criptografar_arquivo(nome_arquivo, chave):
     fernet = Fernet(chave)
-
+    nome_base_arquivo = os.path.basename(nome_arquivo)
     try:
         dados_original = ler_arquivo(nome_arquivo)
         dados_criptografados = fernet.encrypt(dados_original)
         gravar_arquivo(nome_arquivo + '.cripto', dados_criptografados)
         os.remove(nome_arquivo)
         
-        return 'Dados criptografados com sucesso!'
+        return {nome_base_arquivo:'Dados criptografados com sucesso!'}
     
     except Exception as e:
         return e
 
 def descriptografar_arquivo(nome_arquivo, chave):
     fernet = Fernet(chave)
-
+    nome_base_arquivo = os.path.basename(nome_arquivo)
     try:
         dados_criptografados = ler_arquivo(nome_arquivo)
         dados_descriptografados = fernet.decrypt(dados_criptografados)
         gravar_arquivo(nome_arquivo.replace('.cripto', ''), dados_descriptografados)
         os.remove(nome_arquivo)
 
-        return 'Arquivo descriptografrado com sucesso!'
+        return {nome_base_arquivo:'Arquivo descriptografrado com sucesso!'}
     
     except InvalidToken:
-        return 'Senha Errada!'
+        return {nome_base_arquivo:'Senha Errada!'}
     
     except Exception as e:
         return e
         
 
-def main(arquivo):
-    senha = input("Digite uma senha: " )
+def criptografar_descriptografar_arquivo(arquivo, senha):
     chave = derivar_chave(senha)
     print(chave)
-    if not os.path.isfile(arquivo + '.cripto'):
+    if not arquivo.endswith('.cripto'):
         # chave = salvar_chave('chave')
-        output = criptografar_arquivo(arquivo, chave)
+        saida = criptografar_arquivo(arquivo, chave)
     else:
         # chave = ler_arquivo('chave')
-        output = descriptografar_arquivo(arquivo + '.cripto', chave)
-    print(output)
+        saida = descriptografar_arquivo(arquivo, chave)
+    return saida
+
+def criptografar_descriptografar_pasta(pasta, senha):
+    saida = []
+    for root, dirs, arquivos in os.walk(pasta):
+        for arquivo in arquivos:
+            caminho_arquivo = os.path.join(root, arquivo)
+
+            saida_arquivo = criptografar_descriptografar_arquivo(caminho_arquivo, senha)
+            saida.append(saida_arquivo)
+    return saida
+
+def main():
+    opcao = input(""" \
+Digite uma opção:
+    [1] Arquivo         
+    [2] Pasta
+    [3] Sair
+Opção: """)
+    if opcao == '1':
+        arquivo = input("Digite o caminho completo do arquivo: ")
+        senha = input("Digite uma Senha: ")
+        saida = criptografar_descriptografar_arquivo(arquivo, senha)
+        print(saida)
+
+    elif opcao == '2':
+        pasta = input("Digite o caminho completo da pasta: ")
+        senha = input("Digite uma Senha: ")
+        saida = criptografar_descriptografar_pasta(pasta, senha)
+        print(saida)
+    
+    elif opcao == '3':
+        print("Saindo...")
+
+    else:
+        print("Opçao Inválida!")
+    
+
 
 if __name__ == '__main__':
-    main(DESKTOP_PATH + '\\image.jpeg')
+    main()
 
 # def gerar_chave():
 #     return Fernet.generate_key()
